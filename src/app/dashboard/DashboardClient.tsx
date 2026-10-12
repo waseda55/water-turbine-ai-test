@@ -17,6 +17,7 @@ import { FrancisBladeProfileSvg } from './components/FrancisBladeProfileSvg'
 import { FrancisMeridional } from './components/FrancisMeridional'
 import { FrancisBladeProfile } from './components/FrancisBladeProfile'
 import FrancisHillChart from './components/FrancisHillChart'
+import KameChartTab from './components/KameChartTab'
 import { FrancisRunner3D } from './components/FrancisRunner3D'
 import { FrancisBlade3D }  from './components/FrancisBlade3D'
 
@@ -443,7 +444,7 @@ export default function DashboardClient(_props: Props) {
   const importFileRef = useRef<HTMLInputElement>(null)
   const [sidebarTab, setSidebarTab] = useState<'history' | 'projects'>('history')
   const [rightPaneOpen, setRightPaneOpen] = useState(false)
-  const [mainTab, setMainTab] = useState<'result' | 'hq' | 'ns' | 'schematic' | 'velocity' | 'francis_detail' | 'francis_drawings' | 'hill_chart'>('result')
+  const [mainTab, setMainTab] = useState<'result' | 'hq' | 'ns' | 'schematic' | 'velocity' | 'francis_detail' | 'francis_drawings' | 'hill_chart' | 'kame'>('result')
   const [theme, setTheme] = useState<'dark' | 'light'>('light')
   const [flowUnit, setFlowUnit] = useState<FlowUnit>('m3/s')
   const router = useRouter()
@@ -890,6 +891,12 @@ export default function DashboardClient(_props: Props) {
               <button onClick={() => setMainTab('hill_chart')} className={`tab ${mainTab === 'hill_chart' ? 'active' : ''}`}
                 style={{ color: mainTab === 'hill_chart' ? '#38bdf8' : undefined }}>
                 📈 性能曲線
+              </button>
+            )}
+            {results.turbineType === 'フランシス水車' && (
+              <button onClick={() => setMainTab('kame')} className={`tab ${mainTab === 'kame' ? 'active' : ''}`}
+                style={{ color: mainTab === 'kame' ? '#38bdf8' : undefined }}>
+                🐢 亀の甲
               </button>
             )}
           </div>
@@ -1754,6 +1761,11 @@ export default function DashboardClient(_props: Props) {
                   <FrancisBlade3D results={results} />
                 </div>
               </div>
+            )}
+
+            {mainTab === 'kame' && results.turbineType === 'フランシス水車' && (
+              <KameChartTab inputs={inputs} results={results} theme={theme}
+                onApplyPoint={(head, flowRate) => update({ head, flowRate })} />
             )}
 
             {mainTab === 'hill_chart' && results.turbineType === 'フランシス水車' && (
