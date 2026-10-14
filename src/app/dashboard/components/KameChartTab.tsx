@@ -6,7 +6,7 @@
 // ============================================================
 import { useMemo, useState, useEffect } from 'react'
 import type { TurbineInputs, TurbineResults } from '@/types'
-import { KAME_50HZ, KAME_60HZ, findKame, type KameBlock } from '@/lib/kameNoKou'
+import { KAME_50HZ, KAME_60HZ, findKame, getKameDataset, type KameBlock } from '@/lib/kameNoKou'
 import { predictEfficiencyFrancis } from '@/lib/turbine-calc'
 
 interface Props {
@@ -80,6 +80,7 @@ const grp = (t: string) => <div style={{ margin: '10px 0 2px', fontSize: 12, fon
 export default function KameChartTab({ inputs, results, theme, onApplyPoint }: Props) {
   const frequency = inputs.frequency
   const blocks = frequency === 60 ? KAME_60HZ : KAME_50HZ
+  const ds = getKameDataset(frequency === 60 ? 60 : 50)
   const [sel, setSel] = useState<KameBlock | null>(null)
   const [mode, setMode] = useState<'sel' | 'pt'>('sel')
   const [labels, setLabels] = useState(true)
@@ -126,6 +127,10 @@ export default function KameChartTab({ inputs, results, theme, onApplyPoint }: P
       <div className="sec-hd">亀の甲（水車選定図 図4.3-{frequency === 60 ? '9' : '8'}・{frequency}Hz）</div>
       <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 10px' }}>
         枠をクリックすると詳細を表示します。図から再構成した暫定データのため、枠の位置には誤差があります（特に低い回転速度の枠）。
+      </p>
+      <p style={{ fontSize: 11.5, color: 'var(--muted)', margin: '0 0 10px' }}>
+        データ: {ds.source.figure}（{ds.source.document} p.{ds.source.page}）／版 {ds.version}（{ds.status}）／作成 {ds.createdAt}
+        <br />{ds.accuracy}
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 300px', gap: 14, alignItems: 'start' }}>
         <div style={{ border: '1px solid var(--border)', background: 'var(--surface)', padding: 6 }}>
