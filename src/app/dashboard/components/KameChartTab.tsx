@@ -28,12 +28,23 @@ const px2Q = (x: number) => Math.pow(10, lg(QMIN) + ((x - M.l) / PW) * (lg(QMAX)
 const py2H = (y: number) => Math.pow(10, lg(HMIN) + (1 - (y - M.t) / PH) * (lg(HMAX) - lg(HMIN)))
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v))
 
+// 色分け: 回転速度は色覚の違いに配慮した配色（Okabe-Ito 系）。n_s シリーズは低→高を青→赤の連続色で示す。
 const PALETTE = {
-  light: ['#2f5f9e', '#2d7f5e', '#b3702a', '#8b4aa0', '#4b8c96'],
-  dark:  ['#6fa3e6', '#5fc79b', '#e0a05a', '#c590dc', '#7cc3cc'],
+  light: ['#0072B2', '#009E73', '#E69F00', '#CC79A7', '#56B4E9'],
+  dark:  ['#5aaee6', '#2fc79a', '#f0b429', '#e58fbd', '#8fd0f2'],
 }
-const REF_COLOR = { light: '#1769c2', dark: '#7fb8ff' }
-const HILITE = { light: '#d1344b', dark: '#ff6b81' }
+const SERIES_ORDER = ['L', 'K', 'J', 'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B'] // n_s の小さい順（低速→高速）
+const SERIES_BASE: Record<string, string> = {
+  L: '#5b2c83', K: '#3b3f99', J: '#2a6fb0', I: '#1f93a8', H: '#1f9e7a', G: '#5ea84f',
+  F: '#a3a52a', E: '#d89a1a', D: '#d9641f', C: '#c43c2a', B: '#8f1d2c',
+}
+const mix = (hex: string, t: number) => {
+  const n = parseInt(hex.slice(1), 16), c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v => Math.round(v + (255 - v) * t))
+  return '#' + c.map(v => v.toString(16).padStart(2, '0')).join('')
+}
+const seriesColor = (s: string, theme: 'dark' | 'light') => { const c = SERIES_BASE[s] ?? '#888888'; return theme === 'dark' ? mix(c, 0.35) : c }
+const REF_COLOR = { light: '#d6006f', dark: '#ff5fb0' }   // 計算に最も近い枠（マゼンタの点線）
+const HILITE = { light: '#d1344b', dark: '#ff6b81' }       // 入力点の十字・状態表示
 
 const seriesOf = (ns: number) =>
   Object.entries(NS_BY_SERIES).reduce((a, b) => (Math.abs(b[1] - ns) < Math.abs(a[1] - ns) ? b : a))[0]
@@ -84,6 +95,7 @@ export default function KameChartTab({ inputs, results, theme, onApplyPoint }: P
   const [sel, setSel] = useState<KameBlock | null>(null)
   const [mode, setMode] = useState<'sel' | 'pt'>('sel')
   const [labels, setLabels] = useState(true)
+  const [colorMode, setColorMode] = useState<'rpm' | 'series'>('rpm')
   useEffect(() => { setSel(null) }, [frequency])
 
   const pal = PALETTE[theme], refColor = REF_COLOR[theme], hi = HILITE[theme]
@@ -158,22 +170,22 @@ export default function KameChartTab({ inputs, results, theme, onApplyPoint }: P
             <g clipPath="url(#kame-cp)">
               {ordered.map(b => {
                 const isP = found.primary === b, isA = found.adjacent.includes(b), isS = sel === b
-                const c = rpmColor.get(b.rpm) ?? pal[0]
+                const c = colorMode === 'rpm' ? (rpmColor.get(b.rpm) ?? pal[0]) : seriesColor(b.label[0], theme)
                 return (
                   <polygon key={keyOf(b)} points={pts(b)} tabIndex={0} role="button"
                     aria-label={`${b.label}（${b.rpm} r/min）の詳細を見る`}
                     style={{ cursor: 'pointer', outline: 'none' }}
-                    fill={isP || isA ? hi : c} fillOpacity={isS ? 0.26 : isP ? 0.32 : isA ? 0.12 : 0.07}
-                    stroke={isS ? 'var(--text)' : isP || isA ? hi : c} strokeWidth={isS ? 2.8 : isP ? 2.2 : isA ? 1.6 : 1.1}
-                    strokeDasharray={isA && !isS ? '5 3' : undefined}
+                    fill={c} fillOpacity={isS ? 0.5 : isP ? 0.6 : isA ? 0.4 : 0.26}
+                    stroke={isS ? 'var(--accent)' : isP || isA ? 'var(--text)' : c} strokeWidth={isS ? 3.6 : isP ? 2.8 : isA ? 2 : 1.5}
+                    strokeDasharray={isA && !isS ? '6 3' : undefined}
                     onClick={ev => { if (mode === 'sel') { ev.stopPropagation(); toggle(b) } }}
                     onKeyDown={ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggle(b) } }}>
                     <title>{`${b.label}（${b.rpm} r/min）`}</title>
                   </polygon>
                 )
               })}
-              {refBlock && <polygon points={pts(refBlock)} fill="none" stroke={refColor} strokeWidth={2.4}
-                strokeDasharray="2 4" strokeLinecap="round" pointerEvents="none" />}
+              {refBlock && <polygon points={pts(refBlock)} fill="none" stroke={refColor} strokeWidth={3.4}
+                strokeDasharray="1 6" strokeLinecap="round" pointerEvents="none" />}
             </g>
             {labels && blocks.map(b => {
               const q = b.poly.map(([x, y]) => [lx(Math.pow(10, x)), ly(Math.pow(10, y))])
@@ -183,14 +195,15 @@ export default function KameChartTab({ inputs, results, theme, onApplyPoint }: P
               const emph = found.primary === b
               return (
                 <text key={'l' + keyOf(b)} x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
-                  fontSize={emph ? 11 : 9.5} fontWeight={emph ? 700 : 400} fill="var(--text)" pointerEvents="none"
+                  fontSize={emph ? 11.5 : 10} fontWeight={emph ? 700 : 500} fill="var(--text)" pointerEvents="none"
+                  stroke="var(--surface)" strokeWidth={3} strokeLinejoin="round" paintOrder="stroke"
                   transform={`rotate(${rot.toFixed(1)} ${cx.toFixed(1)} ${cy.toFixed(1)})`}>{b.label}</text>
               )
             })}
-            <line x1={M.l} x2={X} y1={Y} y2={Y} stroke={hi} strokeDasharray="3 3" />
-            <line x1={X} x2={X} y1={Y} y2={M.t + PH} stroke={hi} strokeDasharray="3 3" />
-            <circle cx={X} cy={Y} r={6} fill="var(--surface)" stroke={hi} strokeWidth={2.4} />
-            <circle cx={X} cy={Y} r={2} fill={hi} />
+            <line x1={M.l} x2={X} y1={Y} y2={Y} stroke="var(--text)" strokeOpacity={0.7} strokeDasharray="4 3" />
+            <line x1={X} x2={X} y1={Y} y2={M.t + PH} stroke="var(--text)" strokeOpacity={0.7} strokeDasharray="4 3" />
+            <circle cx={X} cy={Y} r={7} fill="var(--surface)" stroke="var(--text)" strokeWidth={2.6} />
+            <circle cx={X} cy={Y} r={2.5} fill="var(--text)" />
           </svg>
         </div>
 
@@ -200,6 +213,11 @@ export default function KameChartTab({ inputs, results, theme, onApplyPoint }: P
             <div style={{ display: 'inline-flex' }}>
               <button style={btn(mode === 'sel')} onClick={() => setMode('sel')}>枠を選ぶ</button>
               <button style={btn(mode === 'pt')} onClick={() => setMode('pt')}>点を置く</button>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--muted)', margin: '10px 0 4px' }}>色分け</div>
+            <div style={{ display: 'inline-flex' }}>
+              <button style={btn(colorMode === 'rpm')} onClick={() => setColorMode('rpm')}>回転速度</button>
+              <button style={btn(colorMode === 'series')} onClick={() => setColorMode('series')}>n_s シリーズ</button>
             </div>
             <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, fontSize: 12.5, color: 'var(--muted)' }}>
               <input type="checkbox" checked={labels} onChange={e => setLabels(e.target.checked)} />枠番を表示する
@@ -261,13 +279,19 @@ export default function KameChartTab({ inputs, results, theme, onApplyPoint }: P
             <p style={{ fontSize: 11.5, color: 'var(--muted)', margin: '8px 0 0' }}>選定には使わず、効率を優先した場合の参考値です。</p>
           </div>
 
-          <div style={{ fontSize: 12, display: 'flex', flexDirection: 'column', gap: 4, border: '1px solid var(--border)', background: 'var(--surface)', padding: '10px 12px' }}>
-            {Array.from(rpmColor.entries()).map(([r, c]) => (
-              <div key={r}><span style={{ display: 'inline-block', width: 14, height: 10, background: c, marginRight: 8, verticalAlign: 'middle' }} />{r} r/min</div>
-            ))}
-            <div><svg width={22} height={10} style={{ marginRight: 8, verticalAlign: 'middle' }}>
-              <line x1={1} x2={21} y1={5} y2={5} stroke={refColor} strokeWidth={2.4} strokeDasharray="2 4" strokeLinecap="round" /></svg>計算に最も近い枠</div>
-            <div><span style={{ display: 'inline-block', width: 14, height: 10, background: hi, opacity: 0.5, marginRight: 8, verticalAlign: 'middle' }} />亀の甲で選ばれた枠</div>
+          <div style={{ fontSize: 12, display: 'flex', flexDirection: 'column', gap: 5, border: '1px solid var(--border)', background: 'var(--surface)', padding: '10px 12px' }}>
+            <div style={{ fontWeight: 700 }}>{colorMode === 'rpm' ? '色＝回転速度' : '色＝n_s シリーズ（低速→高速）'}</div>
+            {colorMode === 'rpm'
+              ? Array.from(rpmColor.entries()).map(([r, c]) => (
+                  <div key={r}><span style={{ display: 'inline-block', width: 16, height: 12, background: c, opacity: 0.8, border: `1.5px solid ${c}`, marginRight: 8, verticalAlign: 'middle' }} />{r} r/min</div>))
+              : SERIES_ORDER.filter(sr => blocks.some(b => b.label[0] === sr)).map(sr => (
+                  <div key={sr}><span style={{ display: 'inline-block', width: 16, height: 12, background: seriesColor(sr, theme), opacity: 0.8, border: `1.5px solid ${seriesColor(sr, theme)}`, marginRight: 8, verticalAlign: 'middle' }} />{sr}（n_s {NS_BY_SERIES[sr] ?? '90未満'}）</div>))}
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 2, display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <div><svg width={22} height={12} style={{ marginRight: 8, verticalAlign: 'middle' }}><rect x={1} y={1} width={20} height={10} fill="var(--muted)" fillOpacity={0.6} stroke="var(--text)" strokeWidth={2.2} /></svg>亀の甲で選ばれた枠（濃い塗り）</div>
+              <div><svg width={22} height={12} style={{ marginRight: 8, verticalAlign: 'middle' }}><rect x={1} y={1} width={20} height={10} fill="var(--muted)" fillOpacity={0.4} stroke="var(--text)" strokeWidth={1.6} strokeDasharray="4 2" /></svg>隣接する枠（破線）</div>
+              <div><svg width={22} height={12} style={{ marginRight: 8, verticalAlign: 'middle' }}><rect x={1} y={1} width={20} height={10} fill="var(--muted)" fillOpacity={0.5} stroke="var(--accent)" strokeWidth={3} /></svg>クリックして選んだ枠</div>
+              <div><svg width={22} height={12} style={{ marginRight: 8, verticalAlign: 'middle' }}><line x1={1} x2={21} y1={6} y2={6} stroke={refColor} strokeWidth={3.4} strokeDasharray="1 6" strokeLinecap="round" /></svg>計算に最も近い枠（マゼンタの点線）</div>
+            </div>
           </div>
         </div>
       </div>
