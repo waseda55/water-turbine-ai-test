@@ -13,6 +13,8 @@ interface Props {
   inputs: TurbineInputs
   results: TurbineResults
   theme: 'dark' | 'light'
+  /** 高コントラスト（プロジェクター）表示。ダッシュボードのヘッダーのボタンで切り替える */
+  projector?: boolean
   /** 入力（有効落差・流量）を更新する。ダッシュボードの update を渡す */
   onApplyPoint: (head: number, flowRate: number) => void
 }
@@ -33,6 +35,7 @@ const PALETTE = {
   light: ['#0072B2', '#009E73', '#E69F00', '#CC79A7', '#56B4E9'],
   dark:  ['#5aaee6', '#2fc79a', '#f0b429', '#e58fbd', '#8fd0f2'],
 }
+const PROJ_PALETTE = ['#0b4f9e', '#00794a', '#c25e00', '#a8006b', '#007fb5'] // プロジェクター表示用（白背景で濃く見える色）
 const SERIES_ORDER = ['L', 'K', 'J', 'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B'] // n_s の小さい順（低速→高速）
 const SERIES_BASE: Record<string, string> = {
   L: '#5b2c83', K: '#3b3f99', J: '#2a6fb0', I: '#1f93a8', H: '#1f9e7a', G: '#5ea84f',
@@ -81,14 +84,14 @@ function blockDetail(b: KameBlock, frequency: number) {
 }
 
 const row = (k: string, v: React.ReactNode) => (
-  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12.5, padding: '2px 0' }}>
+  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 'calc(12.5px * var(--kz, 1))', padding: '2px 0' }}>
     <span style={{ color: 'var(--muted)' }}>{k}</span>
     <span style={{ fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{v}</span>
   </div>
 )
-const grp = (t: string) => <div style={{ margin: '10px 0 2px', fontSize: 12, fontWeight: 700 }}>{t}</div>
+const grp = (t: string) => <div style={{ margin: '10px 0 2px', fontSize: 'calc(12px * var(--kz, 1))', fontWeight: 700 }}>{t}</div>
 
-export default function KameChartTab({ inputs, results, theme, onApplyPoint }: Props) {
+export default function KameChartTab({ inputs, results, theme, projector = false, onApplyPoint }: Props) {
   const frequency = inputs.frequency
   const blocks = frequency === 60 ? KAME_60HZ : KAME_50HZ
   const ds = getKameDataset(frequency === 60 ? 60 : 50)
@@ -96,9 +99,17 @@ export default function KameChartTab({ inputs, results, theme, onApplyPoint }: P
   const [mode, setMode] = useState<'sel' | 'pt'>('sel')
   const [labels, setLabels] = useState(true)
   const [colorMode, setColorMode] = useState<'rpm' | 'series'>('rpm')
+  const proj = projector
   useEffect(() => { setSel(null) }, [frequency])
 
-  const pal = PALETTE[theme], refColor = REF_COLOR[theme], hi = HILITE[theme]
+  const eff: 'dark' | 'light' = proj ? 'light' : theme   // プロジェクター表示のときは、常に白背景の配色
+  const pal = proj ? PROJ_PALETTE : PALETTE[eff], refColor = REF_COLOR[eff], hi = HILITE[eff]
+  const S = proj
+    ? { fill: 0.55, fillP: 0.92, fillA: 0.72, fillS: 0.8, sw: 2.4, swP: 4.2, swA: 3.2, swS: 5, grid: 0.5, tick: 14.5, axis: 16, lab: 13.5, labP: 16, halo: 4.5, ref: 4.6, pt: 9 }
+    : { fill: 0.26, fillP: 0.6, fillA: 0.4, fillS: 0.5, sw: 1.5, swP: 2.8, swA: 2, swS: 3.6, grid: 0.35, tick: 11, axis: 12, lab: 10, labP: 11.5, halo: 3, ref: 3.4, pt: 7 }
+  const projVars = (proj
+    ? { '--surface': '#ffffff', '--bg': '#ffffff', '--text': '#000000', '--muted': '#1f1f1f', '--border': '#404040', '--accent': '#b00020', '--kz': 1.3 }
+    : { '--kz': 1 }) as unknown as React.CSSProperties
   const rpmColor = useMemo(() => {
     const r = Array.from(new Set(blocks.map(b => b.rpm))).sort((a, b) => b - a)
     const m = new Map<number, string>(); r.forEach((v, i) => m.set(v, pal[Math.min(i, 4)])); return m
@@ -130,21 +141,21 @@ export default function KameChartTab({ inputs, results, theme, onApplyPoint }: P
   const ordered = useMemo(() => (sel ? [...blocks.filter(b => b !== sel), sel] : blocks), [blocks, sel])
   const X = lx(Q), Y = ly(H)
   const btn = (on: boolean): React.CSSProperties => ({
-    padding: '4px 12px', fontSize: 12.5, cursor: 'pointer', border: '1px solid var(--border)',
+    padding: '4px 12px', fontSize: 'calc(12.5px * var(--kz, 1))', cursor: 'pointer', border: '1px solid var(--border)',
     background: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--bg)' : 'var(--text)',
   })
 
   return (
-    <div className="panel" style={{ padding: 14 }}>
-      <div className="sec-hd">亀の甲（水車選定図 図4.3-{frequency === 60 ? '9' : '8'}・{frequency}Hz）</div>
-      <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 10px' }}>
+    <div className="panel" style={{ padding: 14, color: 'var(--text)', ...projVars }}>
+      <div className="sec-hd">亀の甲（水車選定図 図4.3-{frequency === 60 ? '9' : '8'}・<span style={{ textTransform: 'none' }}>{frequency}Hz</span>）</div>
+      <p style={{ fontSize: 'calc(12px * var(--kz, 1))', color: 'var(--muted)', margin: '0 0 10px' }}>
         枠をクリックすると詳細を表示します。図から再構成した暫定データのため、枠の位置には誤差があります（特に低い回転速度の枠）。
       </p>
-      <p style={{ fontSize: 11.5, color: 'var(--muted)', margin: '0 0 10px' }}>
+      <p style={{ fontSize: 'calc(11.5px * var(--kz, 1))', color: 'var(--muted)', margin: '0 0 10px' }}>
         データ: {ds.source.figure}（{ds.source.document} p.{ds.source.page}）／版 {ds.version}（{ds.status}）／作成 {ds.createdAt}
         <br />{ds.accuracy}
       </p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 300px', gap: 14, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `minmax(0,1fr) ${proj ? 390 : 300}px`, gap: 14, alignItems: 'start' }}>
         <div style={{ border: '1px solid var(--border)', background: 'var(--surface)', padding: 6 }}>
           <svg viewBox={`0 0 ${W} ${HGT}`} style={{ display: 'block', width: '100%', height: 'auto' }}
                role="img" aria-label="流量と有効落差の対数グラフに亀の甲を重ねた水車選定図"
@@ -157,26 +168,26 @@ export default function KameChartTab({ inputs, results, theme, onApplyPoint }: P
                }}>
             <clipPath id="kame-cp"><rect x={M.l} y={M.t} width={PW} height={PH} /></clipPath>
             {[0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.5, 2, 2.5, 3].map(q => (
-              <g key={q}><line x1={lx(q)} x2={lx(q)} y1={M.t} y2={M.t + PH} stroke="var(--border)" strokeOpacity={0.35} />
-                <text x={lx(q)} y={M.t + PH + 16} textAnchor="middle" fontSize={11} fill="var(--muted)">{q.toFixed(1)}</text></g>
+              <g key={q}><line x1={lx(q)} x2={lx(q)} y1={M.t} y2={M.t + PH} stroke="var(--border)" strokeOpacity={S.grid} />
+                <text x={lx(q)} y={M.t + PH + 16} textAnchor="middle" fontSize={S.tick} fill="var(--muted)">{q.toFixed(1)}</text></g>
             ))}
             {[10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(h => (
-              <g key={h}><line x1={M.l} x2={M.l + PW} y1={ly(h)} y2={ly(h)} stroke="var(--border)" strokeOpacity={0.35} />
-                <text x={M.l - 8} y={ly(h)} textAnchor="end" dominantBaseline="central" fontSize={11} fill="var(--muted)">{h}</text></g>
+              <g key={h}><line x1={M.l} x2={M.l + PW} y1={ly(h)} y2={ly(h)} stroke="var(--border)" strokeOpacity={S.grid} />
+                <text x={M.l - 8} y={ly(h)} textAnchor="end" dominantBaseline="central" fontSize={S.tick} fill="var(--muted)">{h}</text></g>
             ))}
             <rect x={M.l} y={M.t} width={PW} height={PH} fill="none" stroke="var(--text)" strokeWidth={1.2} />
-            <text x={M.l + PW / 2} y={HGT - 10} textAnchor="middle" fontSize={12} fill="var(--text)">流量 Q（m³/s）</text>
-            <text x={16} y={M.t + PH / 2} textAnchor="middle" fontSize={12} fill="var(--text)" transform={`rotate(-90 16 ${M.t + PH / 2})`}>有効落差 H（m）</text>
+            <text x={M.l + PW / 2} y={HGT - 10} textAnchor="middle" fontSize={S.axis} fill="var(--text)">流量 Q（m³/s）</text>
+            <text x={16} y={M.t + PH / 2} textAnchor="middle" fontSize={S.axis} fill="var(--text)" transform={`rotate(-90 16 ${M.t + PH / 2})`}>有効落差 H（m）</text>
             <g clipPath="url(#kame-cp)">
               {ordered.map(b => {
                 const isP = found.primary === b, isA = found.adjacent.includes(b), isS = sel === b
-                const c = colorMode === 'rpm' ? (rpmColor.get(b.rpm) ?? pal[0]) : seriesColor(b.label[0], theme)
+                const c = colorMode === 'rpm' ? (rpmColor.get(b.rpm) ?? pal[0]) : seriesColor(b.label[0], eff)
                 return (
                   <polygon key={keyOf(b)} points={pts(b)} tabIndex={0} role="button"
                     aria-label={`${b.label}（${b.rpm} r/min）の詳細を見る`}
                     style={{ cursor: 'pointer', outline: 'none' }}
-                    fill={c} fillOpacity={isS ? 0.5 : isP ? 0.6 : isA ? 0.4 : 0.26}
-                    stroke={isS ? 'var(--accent)' : isP || isA ? 'var(--text)' : c} strokeWidth={isS ? 3.6 : isP ? 2.8 : isA ? 2 : 1.5}
+                    fill={c} fillOpacity={isS ? S.fillS : isP ? S.fillP : isA ? S.fillA : S.fill}
+                    stroke={isS ? 'var(--accent)' : isP || isA ? 'var(--text)' : c} strokeWidth={isS ? S.swS : isP ? S.swP : isA ? S.swA : S.sw}
                     strokeDasharray={isA && !isS ? '6 3' : undefined}
                     onClick={ev => { if (mode === 'sel') { ev.stopPropagation(); toggle(b) } }}
                     onKeyDown={ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggle(b) } }}>
@@ -184,7 +195,7 @@ export default function KameChartTab({ inputs, results, theme, onApplyPoint }: P
                   </polygon>
                 )
               })}
-              {refBlock && <polygon points={pts(refBlock)} fill="none" stroke={refColor} strokeWidth={3.4}
+              {refBlock && <polygon points={pts(refBlock)} fill="none" stroke={refColor} strokeWidth={S.ref}
                 strokeDasharray="1 6" strokeLinecap="round" pointerEvents="none" />}
             </g>
             {labels && blocks.map(b => {
@@ -195,31 +206,31 @@ export default function KameChartTab({ inputs, results, theme, onApplyPoint }: P
               const emph = found.primary === b
               return (
                 <text key={'l' + keyOf(b)} x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
-                  fontSize={emph ? 11.5 : 10} fontWeight={emph ? 700 : 500} fill="var(--text)" pointerEvents="none"
-                  stroke="var(--surface)" strokeWidth={3} strokeLinejoin="round" paintOrder="stroke"
+                  fontSize={emph ? S.labP : S.lab} fontWeight={emph || proj ? 700 : 500} fill="var(--text)" pointerEvents="none"
+                  stroke="var(--surface)" strokeWidth={S.halo} strokeLinejoin="round" paintOrder="stroke"
                   transform={`rotate(${rot.toFixed(1)} ${cx.toFixed(1)} ${cy.toFixed(1)})`}>{b.label}</text>
               )
             })}
             <line x1={M.l} x2={X} y1={Y} y2={Y} stroke="var(--text)" strokeOpacity={0.7} strokeDasharray="4 3" />
             <line x1={X} x2={X} y1={Y} y2={M.t + PH} stroke="var(--text)" strokeOpacity={0.7} strokeDasharray="4 3" />
-            <circle cx={X} cy={Y} r={7} fill="var(--surface)" stroke="var(--text)" strokeWidth={2.6} />
+            <circle cx={X} cy={Y} r={S.pt} fill="var(--surface)" stroke="var(--text)" strokeWidth={2.6} />
             <circle cx={X} cy={Y} r={2.5} fill="var(--text)" />
           </svg>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ border: '1px solid var(--border)', background: 'var(--surface)', padding: '10px 12px' }}>
-            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>図をクリックしたとき</div>
+            <div style={{ fontSize: 'calc(12px * var(--kz, 1))', color: 'var(--muted)', marginBottom: 4 }}>図をクリックしたとき</div>
             <div style={{ display: 'inline-flex' }}>
               <button style={btn(mode === 'sel')} onClick={() => setMode('sel')}>枠を選ぶ</button>
               <button style={btn(mode === 'pt')} onClick={() => setMode('pt')}>点を置く</button>
             </div>
-            <div style={{ fontSize: 12, color: 'var(--muted)', margin: '10px 0 4px' }}>色分け</div>
+            <div style={{ fontSize: 'calc(12px * var(--kz, 1))', color: 'var(--muted)', margin: '10px 0 4px' }}>色分け</div>
             <div style={{ display: 'inline-flex' }}>
               <button style={btn(colorMode === 'rpm')} onClick={() => setColorMode('rpm')}>回転速度</button>
               <button style={btn(colorMode === 'series')} onClick={() => setColorMode('series')}>n_s シリーズ</button>
             </div>
-            <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, fontSize: 12.5, color: 'var(--muted)' }}>
+            <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, fontSize: 'calc(12.5px * var(--kz, 1))', color: 'var(--muted)' }}>
               <input type="checkbox" checked={labels} onChange={e => setLabels(e.target.checked)} />枠番を表示する
             </label>
           </div>
@@ -227,17 +238,17 @@ export default function KameChartTab({ inputs, results, theme, onApplyPoint }: P
           <div style={{ border: '1px solid var(--border)', background: 'var(--surface)', padding: '10px 12px' }} aria-live="polite">
             <div className="sec-hd">該当する亀の甲</div>
             {found.primary ? (<>
-              <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2 }}>{found.primary.label}
-                <span style={{ fontSize: 11, fontWeight: 400, marginLeft: 8, padding: '1px 8px', border: `1px solid ${hi}`, color: hi, borderRadius: 10 }}>
+              <div style={{ fontSize: 'calc(26px * var(--kz, 1))', fontWeight: 700, lineHeight: 1.2 }}>{found.primary.label}
+                <span style={{ fontSize: 'calc(11px * var(--kz, 1))', fontWeight: 400, marginLeft: 8, padding: '1px 8px', border: `1px solid ${hi}`, color: hi, borderRadius: 10 }}>
                   {found.status === 'inside' ? '枠内' : '枠外（近い）'}</span></div>
               {row('回転速度', `${found.primary.rpm} r/min`)}
               {row('ランナ出口径 D₂', `${d2Of(found.primary)} mm`)}
               {row('比速度 n_s', `${found.primary.label[0]} シリーズ（${NS_BY_SERIES[found.primary.label[0]]}）`)}
-              {found.adjacent.length > 0 && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>
+              {found.adjacent.length > 0 && <div style={{ fontSize: 'calc(12px * var(--kz, 1))', color: 'var(--muted)', marginTop: 6 }}>
                 隣接する枠: {found.adjacent.map(b => `${b.label}（${b.rpm}）`).join('、')}</div>}
-            </>) : <div style={{ fontSize: 13 }}>適用外（どの亀の甲にも入らず、近い枠もありません）</div>}
+            </>) : <div style={{ fontSize: 'calc(13px * var(--kz, 1))' }}>適用外（どの亀の甲にも入らず、近い枠もありません）</div>}
             <div style={{ marginTop: 8 }}>
-              <button style={{ ...btn(false), fontSize: 12 }} disabled={!shown}
+              <button style={{ ...btn(false), fontSize: 'calc(12px * var(--kz, 1))' }} disabled={!shown}
                 onClick={() => { if (detail) onApplyPoint(+detail.Hc.toFixed(1), +detail.Qc.toFixed(2)) }}>
                 {sel ? '選んだ枠の中心を入力に反映' : '枠の中心を入力に反映'}
               </button>
@@ -247,8 +258,8 @@ export default function KameChartTab({ inputs, results, theme, onApplyPoint }: P
           <div style={{ border: '1px solid var(--border)', background: 'var(--surface)', padding: '10px 12px' }} aria-live="polite">
             <div className="sec-hd">枠の詳細</div>
             {shown && detail ? (<>
-              <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>{sel ? '選択中の枠' : '亀の甲で選ばれた枠'}</div>
-              <div style={{ fontSize: 20, fontWeight: 700 }}>{shown.label}</div>
+              <div style={{ fontSize: 'calc(11.5px * var(--kz, 1))', color: 'var(--muted)' }}>{sel ? '選択中の枠' : '亀の甲で選ばれた枠'}</div>
+              <div style={{ fontSize: 'calc(20px * var(--kz, 1))', fontWeight: 700 }}>{shown.label}</div>
               {row('回転速度', `${shown.rpm} r/min（${detail.poles}極、${frequency}Hz）`)}
               {row('入力した点', inPoly(lg(Q), lg(H), shown.poly) ? 'この枠の中' : 'この枠の外')}
               {grp('適用範囲（図から読み取り）')}
@@ -261,9 +272,9 @@ export default function KameChartTab({ inputs, results, theme, onApplyPoint }: P
               {row('単位流量 Q₁₁', `${detail.Q11.toFixed(3)} m³/s`)}
               {row('推定効率', `${(detail.eta * 100).toFixed(1)} %`)}
               {row('比速度（計算）', detail.ns.toFixed(0))}
-              <p style={{ fontSize: 11.5, color: 'var(--muted)', margin: '8px 0 0' }}>
+              <p style={{ fontSize: 'calc(11.5px * var(--kz, 1))', color: 'var(--muted)', margin: '8px 0 0' }}>
                 発電機容量や寸法など、マニュアル表4.3-5／4.3-6 の仕様は、この版には入っていません。</p>
-            </>) : <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>枠をクリックすると、その枠の詳細を表示します。</div>}
+            </>) : <div style={{ fontSize: 'calc(12.5px * var(--kz, 1))', color: 'var(--muted)' }}>枠をクリックすると、その枠の詳細を表示します。</div>}
           </div>
 
           <div style={{ border: '1px solid var(--border)', background: 'var(--surface)', padding: '10px 12px' }}>
@@ -276,16 +287,16 @@ export default function KameChartTab({ inputs, results, theme, onApplyPoint }: P
             {row('最も近い枠', refBlock ? `${refBlock.label}（${refBlock.rpm} r/min）` : 'なし（図にない回転速度）')}
             {row('亀の甲との関係', relation)}
             {found.primary && row('亀の甲との比', `回転速度 ×${(best.rpm / found.primary.rpm).toFixed(2)}、D₂ ×${(best.D2 / d2Of(found.primary)).toFixed(2)}`)}
-            <p style={{ fontSize: 11.5, color: 'var(--muted)', margin: '8px 0 0' }}>選定には使わず、効率を優先した場合の参考値です。</p>
+            <p style={{ fontSize: 'calc(11.5px * var(--kz, 1))', color: 'var(--muted)', margin: '8px 0 0' }}>選定には使わず、効率を優先した場合の参考値です。</p>
           </div>
 
-          <div style={{ fontSize: 12, display: 'flex', flexDirection: 'column', gap: 5, border: '1px solid var(--border)', background: 'var(--surface)', padding: '10px 12px' }}>
+          <div style={{ fontSize: 'calc(12px * var(--kz, 1))', display: 'flex', flexDirection: 'column', gap: 5, border: '1px solid var(--border)', background: 'var(--surface)', padding: '10px 12px' }}>
             <div style={{ fontWeight: 700 }}>{colorMode === 'rpm' ? '色＝回転速度' : '色＝n_s シリーズ（低速→高速）'}</div>
             {colorMode === 'rpm'
               ? Array.from(rpmColor.entries()).map(([r, c]) => (
                   <div key={r}><span style={{ display: 'inline-block', width: 16, height: 12, background: c, opacity: 0.8, border: `1.5px solid ${c}`, marginRight: 8, verticalAlign: 'middle' }} />{r} r/min</div>))
               : SERIES_ORDER.filter(sr => blocks.some(b => b.label[0] === sr)).map(sr => (
-                  <div key={sr}><span style={{ display: 'inline-block', width: 16, height: 12, background: seriesColor(sr, theme), opacity: 0.8, border: `1.5px solid ${seriesColor(sr, theme)}`, marginRight: 8, verticalAlign: 'middle' }} />{sr}（n_s {NS_BY_SERIES[sr] ?? '90未満'}）</div>))}
+                  <div key={sr}><span style={{ display: 'inline-block', width: 16, height: 12, background: seriesColor(sr, eff), opacity: 0.8, border: `1.5px solid ${seriesColor(sr, eff)}`, marginRight: 8, verticalAlign: 'middle' }} />{sr}（n_s {NS_BY_SERIES[sr] ?? '90未満'}）</div>))}
             <div style={{ borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 2, display: 'flex', flexDirection: 'column', gap: 5 }}>
               <div><svg width={22} height={12} style={{ marginRight: 8, verticalAlign: 'middle' }}><rect x={1} y={1} width={20} height={10} fill="var(--muted)" fillOpacity={0.6} stroke="var(--text)" strokeWidth={2.2} /></svg>亀の甲で選ばれた枠（濃い塗り）</div>
               <div><svg width={22} height={12} style={{ marginRight: 8, verticalAlign: 'middle' }}><rect x={1} y={1} width={20} height={10} fill="var(--muted)" fillOpacity={0.4} stroke="var(--text)" strokeWidth={1.6} strokeDasharray="4 2" /></svg>隣接する枠（破線）</div>

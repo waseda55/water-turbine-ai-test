@@ -446,6 +446,10 @@ export default function DashboardClient(_props: Props) {
   const [rightPaneOpen, setRightPaneOpen] = useState(false)
   const [mainTab, setMainTab] = useState<'result' | 'hq' | 'ns' | 'schematic' | 'velocity' | 'francis_detail' | 'francis_drawings' | 'hill_chart' | 'kame'>('result')
   const [theme, setTheme] = useState<'dark' | 'light'>('light')
+  // 高コントラスト（プロジェクター）表示。明るい部屋での投影向け。設定はブラウザに保存する
+  const [proj, setProj] = useState(false)
+  useEffect(() => { try { setProj(window.localStorage.getItem('hpp.proj') === '1') } catch { /* 保存できない環境では既定のまま */ } }, [])
+  const toggleProj = () => setProj(v => { const n = !v; try { window.localStorage.setItem('hpp.proj', n ? '1' : '0') } catch { /* 無視 */ } return n })
   const [flowUnit, setFlowUnit] = useState<FlowUnit>('m3/s')
   const router = useRouter()
   const supabase = createClient()
@@ -704,7 +708,7 @@ export default function DashboardClient(_props: Props) {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col ${theme}`} style={{ background: 'var(--bg)' }}>
+    <div className={`min-h-screen flex flex-col ${theme}${proj ? ' proj' : ''}`} style={{ background: 'var(--bg)' }}>
 
       {/* ── Header ── */}
       <header style={{
@@ -730,6 +734,10 @@ export default function DashboardClient(_props: Props) {
             <span style={{ fontSize: 11, color: 'var(--muted)', marginRight: 4 }} className="hidden sm:block">{userEmail}</span>
             <button onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} className="btn" style={{ padding: '4px 8px', fontSize: 13 }}>
               {theme === 'dark' ? '☀' : '☾'}
+            </button>
+            <button onClick={toggleProj} className="btn" aria-pressed={proj} title="プロジェクター表示（高コントラスト）"
+              style={{ padding: '4px 8px', fontSize: 12, ...(proj ? { background: '#000000', color: '#ffffff' } : {}) }}>
+              🖥 投影
             </button>
             <input ref={importFileRef} type="file" accept=".json" className="hidden" onChange={handleImportFile} />
             <button onClick={() => importFileRef.current?.click()} className="btn">読込</button>
@@ -1764,7 +1772,7 @@ export default function DashboardClient(_props: Props) {
             )}
 
             {mainTab === 'kame' && results.turbineType === 'フランシス水車' && (
-              <KameChartTab inputs={inputs} results={results} theme={theme}
+              <KameChartTab inputs={inputs} results={results} theme={theme} projector={proj}
                 onApplyPoint={(head, flowRate) => update({ head, flowRate })} />
             )}
 

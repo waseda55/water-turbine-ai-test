@@ -255,4 +255,88 @@
     text-align: right;
     flex-shrink: 0;
   }
+
+  /* ============================================================
+     高コントラスト（プロジェクター）表示
+     明るい部屋での投影向け。白背景・濃い色・太い線・大きめの文字にする。
+     ルート要素に .proj を付けると有効（DashboardClient のヘッダーのボタンで切り替え）。
+     ============================================================ */
+  .proj {
+    color-scheme: light;
+    --bg:       #ffffff;
+    --surface:  #ffffff;
+    --surface2: #eceff1;
+    --border:   #3a3a3a;
+    --text:     #000000;
+    --muted:    #1c1c1c;
+    --accent:   #8a4a00;
+    --accent2:  #6b3800;
+    --ok:       #0b6b1e;
+    --warn:     #8a3d00;
+    --ng:       #a00000;
+    font-weight: 500;
+  }
+  .proj .font-light, .proj .font-normal { font-weight: 500; }
+  .proj .panel { border-width: 2px; }
+  .proj .panel::before, .proj .panel::after { opacity: 1; }
+  .proj .sec-hd { font-size: 13px; color: var(--text); letter-spacing: 0.1em; border-bottom-width: 2px; }
+  .proj .sec-hd::before { width: 14px; height: 3px; }
+  .proj .badge { font-size: 12px; border-width: 2px; }
+  .proj .btn { font-size: 14px; font-weight: 700; border-width: 2px; border-color: var(--text); background: #ffffff; color: var(--text); }
+  .proj .btn:hover { background: #fff3dc; border-color: var(--accent); color: var(--accent2); }
+  .proj .btn-accent { background: var(--accent); border-color: var(--accent2); color: #ffffff; }
+  .proj .btn-accent:hover { background: var(--accent2); color: #ffffff; }
+  .proj .btn-ok { background: var(--ok); border-color: var(--ok); color: #ffffff; }
+  .proj .btn-ok:hover { background: #084f16; color: #ffffff; }
+  .proj .tab { font-size: 14px; font-weight: 700; color: var(--text); }
+  .proj .tab.active { color: var(--accent); border-bottom-width: 4px; }
+  .proj .kpi-tile { border-width: 2px; }
+  .proj .data-row { border-bottom-width: 2px; }
+  .proj .data-row-label { font-size: 13px; color: var(--text); }
+  .proj .data-row-val { font-size: 14px; }
+  .proj input, .proj select, .proj textarea { border: 2px solid var(--text) !important; color: #000000; background: #ffffff; }
+  .proj input[type='range'] { height: 4px; background: #333333; }
+  .proj input[type='range']::-webkit-slider-thumb { width: 20px; height: 20px; }
+  .proj input[type='range']::-moz-range-thumb { width: 20px; height: 20px; }
+  /* コードに直接書かれた文字サイズ（インライン指定）を一段階大きくする */
+  .proj [style*="font-size: 7px"]    { font-size: 10px !important; }
+  .proj [style*="font-size: 8px"]    { font-size: 11px !important; }
+  .proj [style*="font-size: 9px"]    { font-size: 12px !important; }
+  .proj [style*="font-size: 9.5px"]  { font-size: 12.5px !important; }
+  .proj [style*="font-size: 10px"]   { font-size: 13px !important; }
+  .proj [style*="font-size: 10.5px"] { font-size: 13.5px !important; }
+  .proj [style*="font-size: 11px"]   { font-size: 14px !important; }
+  .proj [style*="font-size: 11.5px"] { font-size: 14.5px !important; }
+  .proj [style*="font-size: 12px"]   { font-size: 15px !important; }
+  .proj [style*="font-size: 12.5px"] { font-size: 15.5px !important; }
+  .proj [style*="font-size: 13px"]   { font-size: 16px !important; }
+  .proj .text-xs { font-size: 14px; }
+  .proj .text-\[9px\] { font-size: 12px; }
+  .proj .text-\[10px\] { font-size: 13px; }
+  .proj .text-\[11px\] { font-size: 14px; }
+  .proj .text-\[12px\] { font-size: 15px; }
+  /* 水車の種類ごとの色など、淡いパステル色の文字を濃い色に置き換える（インライン指定の color のみ） */
+  .proj [style^="color: rgb(56, 189, 248"],  .proj [style*=" color: rgb(56, 189, 248"]  { color: #0a5d8f !important; }
+  .proj [style^="color: rgb(52, 211, 153"],  .proj [style*=" color: rgb(52, 211, 153"]  { color: #0a7a50 !important; }
+  .proj [style^="color: rgb(251, 146, 60"],  .proj [style*=" color: rgb(251, 146, 60"]  { color: #b84a00 !important; }
+  .proj [style^="color: rgb(244, 114, 182"], .proj [style*=" color: rgb(244, 114, 182"] { color: #a8104f !important; }
+  .proj [style^="color: rgb(96, 165, 250"],  .proj [style*=" color: rgb(96, 165, 250"]  { color: #1f4fb5 !important; }
+  .proj [style^="color: rgb(167, 139, 250"], .proj [style*=" color: rgb(167, 139, 250"] { color: #5a35b5 !important; }
+  .proj [style^="color: rgb(34, 211, 238"],  .proj [style*=" color: rgb(34, 211, 238"]  { color: #00697a !important; }
+  .proj [style^="color: rgb(245, 158, 11"],  .proj [style*=" color: rgb(245, 158, 11"]  { color: #8a5300 !important; }
+  /* グラフ（SVG）の線・塗りの淡い色を濃くする */
+  .proj svg [stroke="#38bdf8"] { stroke: #0a5d8f; } .proj svg [fill="#38bdf8"] { fill: #0a5d8f; }
+  .proj svg [stroke="#34d399"] { stroke: #0a7a50; } .proj svg [fill="#34d399"] { fill: #0a7a50; }
+  .proj svg [stroke="#fb923c"] { stroke: #b84a00; } .proj svg [fill="#fb923c"] { fill: #b84a00; }
+  .proj svg [stroke="#f472b6"] { stroke: #a8104f; } .proj svg [fill="#f472b6"] { fill: #a8104f; }
+  .proj svg [stroke="#60a5fa"] { stroke: #1f4fb5; } .proj svg [fill="#60a5fa"] { fill: #1f4fb5; }
+  .proj svg [stroke="#a78bfa"] { stroke: #5a35b5; } .proj svg [fill="#a78bfa"] { fill: #5a35b5; }
+  .proj svg [stroke="#f59e0b"] { stroke: #8a5300; } .proj svg [fill="#f59e0b"] { fill: #8a5300; }
+  .proj svg [stroke="#22d3ee"] { stroke: #00697a; } .proj svg [fill="#22d3ee"] { fill: #00697a; }
+  .proj svg [stroke="#94a3b8"] { stroke: #334155; } .proj svg [fill="#94a3b8"] { fill: #334155; }
+  .proj svg [stroke="#0ea5e9"] { stroke: #075985; } .proj svg [fill="#0ea5e9"] { fill: #075985; }
+  .proj svg [stroke="#e5e7eb"] { stroke: #8a9099; }
+  .proj [style^="color: rgb(120, 113, 108"], .proj [style*=" color: rgb(120, 113, 108"] { color: #2b2b2b !important; }
+  .proj .recharts-cartesian-grid line { stroke: #8c8c8c; }
+  .proj .recharts-text { fill: #000000; }
 }
