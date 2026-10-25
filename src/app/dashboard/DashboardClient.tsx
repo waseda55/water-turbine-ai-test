@@ -18,6 +18,7 @@ import { FrancisMeridional } from './components/FrancisMeridional'
 import { FrancisBladeProfile } from './components/FrancisBladeProfile'
 import FrancisHillChart from './components/FrancisHillChart'
 import KameChartTab from './components/KameChartTab'
+import ExplainTab from './components/ExplainTab'
 import { FrancisRunner3D } from './components/FrancisRunner3D'
 import { FrancisBlade3D }  from './components/FrancisBlade3D'
 
@@ -444,7 +445,7 @@ export default function DashboardClient(_props: Props) {
   const importFileRef = useRef<HTMLInputElement>(null)
   const [sidebarTab, setSidebarTab] = useState<'history' | 'projects'>('history')
   const [rightPaneOpen, setRightPaneOpen] = useState(false)
-  const [mainTab, setMainTab] = useState<'result' | 'hq' | 'ns' | 'schematic' | 'velocity' | 'francis_detail' | 'francis_drawings' | 'hill_chart' | 'kame'>('result')
+  const [mainTab, setMainTab] = useState<'result' | 'hq' | 'ns' | 'schematic' | 'velocity' | 'francis_detail' | 'francis_drawings' | 'hill_chart' | 'kame' | 'explain'>('result')
   const [theme, setTheme] = useState<'dark' | 'light'>('light')
   // 高コントラスト（プロジェクター）表示。明るい部屋での投影向け。設定はブラウザに保存する
   const [proj, setProj] = useState(false)
@@ -880,7 +881,7 @@ export default function DashboardClient(_props: Props) {
         {/* ── CENTER: Results ── */}
         <main className="flex-1 overflow-y-auto min-w-0 flex flex-col" style={{ background: 'var(--bg)' }}>
           <div style={{ display: 'flex', gap: 0, padding: '0 16px', background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-	{([{ id: 'result', label: '計算結果' }, { id: 'hq', label: 'H-Q 選定図' }, { id: 'ns', label: 'Ns 分布図' }, { id: 'schematic', label: '📐 概略図' }, { id: 'velocity', label: '🔺 速度三角形' }] as const).map(tab => (
+	{([{ id: 'result', label: '計算結果' }, { id: 'explain', label: '💬 解説' }, { id: 'hq', label: 'H-Q 選定図' }, { id: 'ns', label: 'Ns 分布図' }, { id: 'schematic', label: '📐 概略図' }, { id: 'velocity', label: '🔺 速度三角形' }] as const).map(tab => (
               <button key={tab.id} onClick={() => setMainTab(tab.id)} className={`tab ${mainTab === tab.id ? 'active' : ''}`}>{tab.label}</button>
             ))}
             {results.turbineType === 'フランシス水車' && (
@@ -1770,6 +1771,8 @@ export default function DashboardClient(_props: Props) {
                 </div>
               </div>
             )}
+
+            {mainTab === 'explain' && <ExplainTab inputs={inputs} results={results} />}
 
             {mainTab === 'kame' && results.turbineType === 'フランシス水車' && (
               <KameChartTab inputs={inputs} results={results} theme={theme} projector={proj}

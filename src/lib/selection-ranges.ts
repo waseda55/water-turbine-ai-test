@@ -40,8 +40,10 @@ export async function fetchHQRanges(): Promise<HQRange[]> {
   }))
 }
 
-export async function fetchNsRanges(): Promise<NsRange[]> {
-  const supabase = createClient()
+// client を渡すと、サーバー側（API ルートなど）でも同じ取得処理を使える。省略時はブラウザ用のクライアント。
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function fetchNsRanges(client?: any): Promise<NsRange[]> {
+  const supabase = client ?? createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from('ns_ranges')
